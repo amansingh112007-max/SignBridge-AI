@@ -12,9 +12,6 @@
 ![Build](https://img.shields.io/badge/build-passing-brightgreen)
 ![PRs Welcome](https://img.shields.io/badge/PRs-welcome-orange.svg)
 
-<!-- 🎥 Replace this with an actual demo GIF or video — this is the single highest-impact addition you can make -->
-<!-- ![SignBridge AI Demo](docs/assets/demo.gif) -->
-
 </div>
 
 ---
