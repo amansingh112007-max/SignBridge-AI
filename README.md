@@ -108,3 +108,4 @@ We welcome contributions from developers, sign language experts, and accessibili
 Distributed under the MIT License. See LICENSE for more information.
 
 "Bridging human connection — turning silent signs into spoken words, instantly."
+
