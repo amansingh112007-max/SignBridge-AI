@@ -1,5 +1,5 @@
-                           SignBridge AI
-             Real-Time Sign Language to Speech Translator
+                                  SignBridge AI
+                       Real-Time Sign Language to Speech Translator
    🤖 Computer Vision    ⚡ <100ms Latency    🔒 Zero Video Stored    🌍Hindi & English
 
 
