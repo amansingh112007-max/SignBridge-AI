@@ -209,7 +209,7 @@ We welcome contributions from developers, sign language experts, and accessibili
 
 - [MediaPipe](https://github.com/google/mediapipe) — Holistic pose/hand/face tracking
 - [PyTorch](https://pytorch.org/) — LSTM model training and inference
-- Sign language datasets and consultants who made this project possible *(credit specific sources here)*
+- Sign language datasets and consultants who made this project possible 
 
 ---
 
