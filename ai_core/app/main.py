@@ -2,11 +2,16 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 import numpy as np
 import cv2
+import sys
+import os
 
-# Import our custom services
-from services.tracker import KeypointTracker
-from services.model import GestureModel
-from services.voice import TextToSpeech
+# Add the app directory to the Python path
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+# Import our custom services using absolute imports
+from app.services.tracker import KeypointTracker
+from app.services.model import GestureModel
+from app.services.voice import TextToSpeech
 
 app = FastAPI(title="SignBridge AI Backend")
 
