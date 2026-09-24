@@ -26,6 +26,11 @@ async def test_webcam():
                 if not ret:
                     break
 
+                # 🔄 FLIP THE IMAGE HORIZONTALLY
+                frame = cv2.flip(frame, 1)  # 1 means flip horizontally
+
+                # Compress the image to JPEG bytes...
+
                 # Compress the image to JPEG bytes to send over the internet
                 ret, buffer = cv2.imencode('.jpg', frame)
                 if not ret:
