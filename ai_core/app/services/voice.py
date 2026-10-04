@@ -10,17 +10,22 @@ class TextToSpeech:
         self.is_speaking = False
         self.lock = threading.Lock()
 
-    def speak(self, text):
+    def speak(self, text, lang="en"):
         if text and text != "None":
-            # Run in a separate thread to avoid blocking the main app
-            thread = threading.Thread(target=self._speak_text, args=(text,))
+            thread = threading.Thread(target=self._speak_text, args=(text, lang))
             thread.start()
 
-    def _speak_text(self, text):
+    def _speak_text(self, text, lang):
         with self.lock:
             if not self.is_speaking:
                 self.is_speaking = True
                 try:
+                    # Try to pick a Hindi system voice if the user chose हिंदी
+                    if lang == "hi":
+                        for v in self.engine.getProperty('voices'):
+                            if 'hindi' in v.name.lower() or 'hi-in' in v.id.lower():
+                                self.engine.setProperty('voice', v.id)
+                                break
                     self.engine.say(text)
                     self.engine.runAndWait()
                 finally:

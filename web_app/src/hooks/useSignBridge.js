@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 
 // Where our FastAPI backend lives
 const BACKEND_URL = 'ws://localhost:8000/ws';
@@ -13,12 +13,28 @@ export default function useSignBridge() {
   const streamRef = useRef(null);
   const intervalRef = useRef(null);
 
+  // ✏️ EDIT 1: a ref mirror of the language, so the WebSocket callback
+  // always reads the CURRENT language (even if switched mid-session)
+  const langRef = useRef('en');
+
   // State that the UI reacts to
   const [connected, setConnected] = useState(false);
   const [running, setRunning] = useState(false);
-  const [currentGesture, setCurrentGesture] = useState(null);
+  const [tracking, setTracking] = useState(false);
+  const [currentText, setCurrentText] = useState(null);
+  const [confidence, setConfidence] = useState(0);
+  const [landmarks, setLandmarks] = useState(null);
   const [transcript, setTranscript] = useState([]);
   const [error, setError] = useState(null);
+  const [lang, setLangState] = useState('en');
+  const [seconds, setSeconds] = useState(0);
+
+  // Session timer (mm:ss shown in the studio header)
+  useEffect(() => {
+    if (!running) return undefined;
+    const t = setInterval(() => setSeconds((s) => s + 1), 1000);
+    return () => clearInterval(t);
+  }, [running]);
 
   // Grab one video frame, squash it into a JPEG, ship it to the backend
   const sendFrame = useCallback(() => {
@@ -30,8 +46,7 @@ export default function useSignBridge() {
 
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
 
     // toBlob gives us real JPEG bytes (exactly what cv2.imdecode expects)
     canvas.toBlob((blob) => {
@@ -41,9 +56,29 @@ export default function useSignBridge() {
     }, 'image/jpeg', 0.6);
   }, []);
 
+  // ✏️ EDIT 3: speak using the browser's built-in on-device voice engine
+  const speakText = useCallback((text) => {
+    if (!('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();          // don't queue up old words
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = langRef.current === 'hi' ? 'hi-IN' : 'en-US';
+    u.rate = 1.0;
+    window.speechSynthesis.speak(u);
+  }, []);
+
+  // Switch spoken/caption language mid-session
+  const setLang = useCallback((code) => {
+    langRef.current = code;                   // ✏️ EDIT 2: keep the ref in sync
+    setLangState(code);
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ lang: code }));
+    }
+  }, []);
+
   // One-click start: camera ON + WebSocket ON + frame loop ON
   const start = useCallback(async () => {
     setError(null);
+    setSeconds(0);
     try {
       // 1. Ask the browser for camera permission
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -63,21 +98,28 @@ export default function useSignBridge() {
       ws.onopen = () => {
         setConnected(true);
         setRunning(true);
+        ws.send(JSON.stringify({ lang: lang }));
         // 3. Start the frame pump
         intervalRef.current = setInterval(sendFrame, FRAME_INTERVAL_MS);
       };
 
       ws.onmessage = (event) => {
         try {
-          const data = JSON.parse(event.data);
-          if (data.gesture && data.gesture !== 'None') {
-            setCurrentGesture(data.gesture);
-            setTranscript((prev) => [
-              ...prev,
-              { text: data.gesture, time: new Date().toLocaleTimeString() },
-            ]);
+          const d = JSON.parse(event.data);
+          setTracking(!!d.tracking);
+          setLandmarks(d.landmarks || null);
+          setConfidence(d.confidence || 0);
+          if (d.gesture && d.gesture !== 'None') {
+            const label = d.text || d.gesture;
+            setCurrentText(label);
+            speakText(label);                 // ✏️ EDIT 4: speak every recognized word
+            setTranscript((prev) => [...prev, {
+              text: label,
+              confidence: d.confidence,
+              time: new Date().toLocaleTimeString(),
+            }]);
           } else {
-            setCurrentGesture(null); // graceful uncertainty: show "watching…"
+            setCurrentText(null); // graceful uncertainty: show "watching…"
           }
         } catch (e) {
           console.warn('Unexpected message from backend:', event.data);
@@ -90,9 +132,9 @@ export default function useSignBridge() {
     } catch (err) {
       setError('Camera permission denied, or no webcam found.');
     }
-  }, [sendFrame]);
+  }, [sendFrame, lang, speakText]);
 
-  // Clean shutdown: stop camera, close socket, clear timer
+  // Clean shutdown: stop camera, close socket, clear timer, silence voice
   const stop = useCallback(() => {
     clearInterval(intervalRef.current);
     intervalRef.current = null;
@@ -103,16 +145,19 @@ export default function useSignBridge() {
       streamRef.current = null;
     }
     if (videoRef.current) videoRef.current.srcObject = null;
-    setRunning(false);
-    setConnected(false);
-    setCurrentGesture(null);
+    // Bonus: if a word is mid-speech, silence it when the session ends
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    setRunning(false); setConnected(false);
+    setTracking(false); setLandmarks(null);
+    setCurrentText(null); setConfidence(0);
   }, []);
 
   const clearTranscript = useCallback(() => setTranscript([]), []);
 
   return {
     videoRef, canvasRef,
-    connected, running, currentGesture, transcript, error,
+    connected, running, tracking, currentText, confidence, landmarks,
+    transcript, error, lang, setLang, seconds,
     start, stop, clearTranscript,
   };
 }

@@ -4,32 +4,37 @@ import numpy as np
 
 class KeypointTracker:
     def __init__(self):
-        # Initialize MediaPipe Holistic model
         self.mp_holistic = mp.solutions.holistic
         self.holistic = self.mp_holistic.Holistic(
             min_detection_confidence=0.5,
             min_tracking_confidence=0.5
         )
 
-    def get_keypoints(self, image):
-        # MediaPipe expects RGB images, but OpenCV uses BGR
+    def process_frame(self, image):
+        """Returns (flat keypoints for the AI, display landmarks for the UI overlay)."""
         image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        
-        # Process the image to find landmarks
         results = self.holistic.process(image_rgb)
+
+        if not (results.pose_landmarks and results.left_hand_landmarks
+                and results.right_hand_landmarks and results.face_landmarks):
+            return None, None
+
+        # Full 1662-value vector for the LSTM
+        pose = np.array([[r.x, r.y, r.z, r.visibility] for r in results.pose_landmarks.landmark]).flatten()
+        lh = np.array([[r.x, r.y, r.z] for r in results.left_hand_landmarks.landmark]).flatten()
+        rh = np.array([[r.x, r.y, r.z] for r in results.right_hand_landmarks.landmark]).flatten()
+        face = np.array([[r.x, r.y, r.z] for r in results.face_landmarks.landmark]).flatten()
+        keypoints = np.concatenate([pose, lh, rh, face])
+
         
-        # Check if we found all necessary landmarks
-        if (results.pose_landmarks and results.left_hand_landmarks and 
-            results.right_hand_landmarks and results.face_landmarks):
-            
-            # Extract coordinates and flatten them into a 1D array
-            pose = np.array([[res.x, res.y, res.z, res.visibility] for res in results.pose_landmarks.landmark]).flatten()
-            lh = np.array([[res.x, res.y, res.z] for res in results.left_hand_landmarks.landmark]).flatten()
-            rh = np.array([[res.x, res.y, res.z] for res in results.right_hand_landmarks.landmark]).flatten()
-            face = np.array([[res.x, res.y, res.z] for res in results.face_landmarks.landmark]).flatten()
-            
-            # Combine all keypoints (Total: 1662 points)
-            all_keypoints = np.concatenate([pose, lh, rh, face])
-            return all_keypoints
-            
-        return None
+        display = {
+            "pose": [[round(r.x, 3), round(r.y, 3)] for r in results.pose_landmarks.landmark],
+            "leftHand": [[round(r.x, 3), round(r.y, 3)] for r in results.left_hand_landmarks.landmark],
+            "rightHand": [[round(r.x, 3), round(r.y, 3)] for r in results.right_hand_landmarks.landmark],
+        }
+        return keypoints, display
+
+    def get_keypoints(self, image):
+        
+        keypoints, _ = self.process_frame(image)
+        return keypoints

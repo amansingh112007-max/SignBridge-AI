@@ -49,14 +49,14 @@ class GestureModel:
         if len(self.sequence_buffer) == self.sequence_length:
             sequence = np.array(self.sequence_buffer)
             sequence_tensor = torch.tensor(sequence, dtype=torch.float32).unsqueeze(0)
-            
+
             with torch.no_grad():
                 outputs = self.model(sequence_tensor)
-                _, predicted = torch.max(outputs, 1)
+                probs = torch.softmax(outputs, dim=1)          # turn logits into % confidence
+                conf, predicted = torch.max(probs, 1)
+
                 predicted_class = self.gesture_classes[predicted.item()]
-                
-                # Clear buffer so we don't repeat the same word instantly
                 self.sequence_buffer = []
-                return predicted_class
-                
-        return "None"
+                return predicted_class, round(float(conf) * 100, 1)   # ("Hello", 97.6)
+
+        return "None", 0.0
