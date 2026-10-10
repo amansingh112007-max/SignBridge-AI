@@ -109,7 +109,7 @@ export default function useSignBridge() {
           setTracking(!!d.tracking);
           setLandmarks(d.landmarks || null);
           setConfidence(d.confidence || 0);
-          if (d.gesture && d.gesture !== 'None') {
+          if (d.text) {
             const label = d.text || d.gesture;
             setCurrentText(label);
             speakText(label);                 // ✏️ EDIT 4: speak every recognized word

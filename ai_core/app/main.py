@@ -22,7 +22,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Our MVP vocabulary in both launch languages (PRD: Hindi + English first)
+# MVP vocabulary in both launch languages (words; letters fall back to themselves)
 TRANSLATIONS = {
     "Hello":     {"en": "Hello",     "hi": "नमस्ते"},
     "Thank You": {"en": "Thank you", "hi": "धन्यवाद"},
@@ -35,15 +35,20 @@ TRANSLATIONS = {
     "Bathroom":  {"en": "Bathroom",  "hi": "शौचालय"},
 }
 
+# FR-7: low-confidence recognition never guesses silently
+CONFIDENCE_FLOOR = 40
+
 current_lang = "en"   # simple global for the student MVP
 
 tracker = KeypointTracker()
 model = GestureModel()
 tts = TextToSpeech()
 
+
 @app.get("/")
 def read_root():
     return {"message": "SignBridge AI Backend is running! 🚀"}
+
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -76,12 +81,13 @@ async def websocket_endpoint(websocket: WebSocket):
 
             if keypoints is not None:
                 gesture, confidence = model.predict(keypoints)
-                if gesture != "None":
-                    spoken = TRANSLATIONS.get(gesture, {"en": gesture})[current_lang]
+                if gesture != "None" and confidence >= CONFIDENCE_FLOOR:
+                    entry = TRANSLATIONS.get(gesture, {"en": gesture, "hi": gesture})
+                    spoken = entry.get(current_lang, gesture)
                     tts.speak(spoken, current_lang)
                     text_out = spoken
                 else:
-                    text_out = None
+                    text_out = None   # graceful uncertainty: ask to repeat, don't guess
 
                 await websocket.send_json({
                     "gesture": gesture,

@@ -1,7 +1,26 @@
+# Python
+venv/
 __pycache__/
 *.pyc
-.venv/
-venv/
-env/
-*.egg-info/
+
+# Node / React
 node_modules/
+dist/
+.vite/
+
+# AI data & weights (download from Kaggle / retrain instead of committing)
+dataset/
+models/
+*.pth
+*.onnx
+*.tflite
+
+# Secrets
+kaggle.json
+.env
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

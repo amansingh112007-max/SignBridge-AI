@@ -15,18 +15,18 @@ class KeypointTracker:
         image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         results = self.holistic.process(image_rgb)
 
+        # Require pose + both hands. Face is optional (dataset images often crop it).
         if not (results.pose_landmarks and results.left_hand_landmarks
-                and results.right_hand_landmarks and results.face_landmarks):
+                and results.right_hand_landmarks):
             return None, None
 
-        # Full 1662-value vector for the LSTM
+        # 258-value vector: pose(33*4) + left hand(21*3) + right hand(21*3)
         pose = np.array([[r.x, r.y, r.z, r.visibility] for r in results.pose_landmarks.landmark]).flatten()
         lh = np.array([[r.x, r.y, r.z] for r in results.left_hand_landmarks.landmark]).flatten()
         rh = np.array([[r.x, r.y, r.z] for r in results.right_hand_landmarks.landmark]).flatten()
-        face = np.array([[r.x, r.y, r.z] for r in results.face_landmarks.landmark]).flatten()
-        keypoints = np.concatenate([pose, lh, rh, face])
+        keypoints = np.concatenate([pose, lh, rh])
 
-        
+        # Tiny (x, y) copy so the browser can draw the skeleton preview
         display = {
             "pose": [[round(r.x, 3), round(r.y, 3)] for r in results.pose_landmarks.landmark],
             "leftHand": [[round(r.x, 3), round(r.y, 3)] for r in results.left_hand_landmarks.landmark],
@@ -35,6 +35,6 @@ class KeypointTracker:
         return keypoints, display
 
     def get_keypoints(self, image):
-        
+        # Kept so the Part-1 test script still works
         keypoints, _ = self.process_frame(image)
         return keypoints
