@@ -38,12 +38,21 @@ export default function VideoFeed({ videoRef, canvasRef, running, tracking, curr
       });
     };
 
-    bones(landmarks.pose, POSE_BONES, 'rgba(52,211,153,0.5)');
-    dots(landmarks.pose, 'rgba(52,211,153,0.8)', 2);
-    bones(landmarks.leftHand, HAND_BONES, 'rgba(96,165,250,0.85)');
-    dots(landmarks.leftHand, '#93c5fd', 3);
-    bones(landmarks.rightHand, HAND_BONES, 'rgba(244,114,182,0.85)');
-    dots(landmarks.rightHand, '#f9a8d4', 3);
+    // BATCH 2 GUARD: with one-hand tracking, a missing hand arrives as an
+    // empty array -> skip drawing it instead of crashing on pts[a]
+    const has = (pts) => Array.isArray(pts) && pts.length > 0;
+    if (has(landmarks.pose)) {
+      bones(landmarks.pose, POSE_BONES, 'rgba(52,211,153,0.5)');
+      dots(landmarks.pose, 'rgba(52,211,153,0.8)', 2);
+    }
+    if (has(landmarks.leftHand)) {
+      bones(landmarks.leftHand, HAND_BONES, 'rgba(96,165,250,0.85)');
+      dots(landmarks.leftHand, '#93c5fd', 3);
+    }
+    if (has(landmarks.rightHand)) {
+      bones(landmarks.rightHand, HAND_BONES, 'rgba(244,114,182,0.85)');
+      dots(landmarks.rightHand, '#f9a8d4', 3);
+    }
   }, [landmarks, videoRef]);
 
   const captionColor = highContrast ? 'text-yellow-300' : 'text-white';

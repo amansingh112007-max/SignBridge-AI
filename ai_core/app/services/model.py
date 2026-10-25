@@ -27,7 +27,7 @@ class GestureModel:
     """Stateless per connection: sequence buffers live in the caller (session)."""
 
     def __init__(self):
-        self.input_size = 258          # pose(132) + left hand(63) + right hand(63)
+        self.input_size = 260          # pose(132) + hands(126) + 2 hand-presence flags
         self.hidden_size = 64
         self.num_layers = 2
         self.sequence_length = 30
