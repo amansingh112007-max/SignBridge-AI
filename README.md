@@ -1,224 +1,84 @@
-<div align="center">
-
 # 🤟 SignBridge AI
 
-### Real-Time Sign Language to Speech Translator
+**Real-time sign-language → speech web prototype (ASL alphabet).**
 
-**Empowering 466M+ deaf and hard-of-hearing individuals with instant, on-device gesture-to-speech translation — turning silence into conversation, anywhere.**
+![CI](https://github.com/amansingh112007-max/SignBridge-AI/actions/workflows/ci.yml/badge.svg)
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![Node 18+](https://img.shields.io/badge/node-18+-green.svg)](https://nodejs.org/)
-![Build](https://img.shields.io/badge/build-passing-brightgreen)
-![PRs Welcome](https://img.shields.io/badge/PRs-welcome-orange.svg)
+> **Honest status (Oct 2026):** working full-stack web prototype that recognizes
+> **ASL alphabet letters** from a live webcam. Latest held-out validation accuracy:
+> **__%** (fill in from your last training run).
+> Mobile app, Docker-Compose stack, and ISL word vocabulary are **planned — see Roadmap**.
+> This README describes only what exists today.
 
-</div>
+## What it does (today)
+- Live webcam → MediaPipe Holistic keypoints (543 landmarks/frame) → 2-layer LSTM → letter prediction
+- Real-time captions with **confidence %** and temporal smoothing (no flicker-words)
+- Glowing **skeleton overlay** (pose + both hands) in the browser
+- Session transcript, English/हिंदी caption modes, browser on-device speech (Web Speech API)
+- Accessibility: large-text and high-contrast modes
+- Privacy: frames are processed in RAM and **never stored**; no uploads, no accounts
 
----
+## What it is not (yet)
+- Not a word/phrase translator — letters only (ASL alphabet, 26 classes + symbols)
+- Not multi-signer validated — trained on a single-signer Kaggle dataset
+- Not on-device inference — frames stream over WebSocket to a **local** backend
+- Not mobile, not a distributed multi-user service (per-session state exists, but no scaling work)
 
-## 📖 Table of Contents
+## Architecture
+browser (React + Vite + Tailwind)
+   │  JPEG frames @10 FPS over WebSocket
+   ▼
+FastAPI backend ── MediaPipe Holistic ── PyTorch LSTM (258-dim windows of 30 frames)
+   │  JSON {gesture, text, confidence, landmarks}
+   ▼
+browser captions + Web Speech API voice
 
-- [Overview](#-overview)
-- [How It Works](#-how-it-works-the-pipeline)
-- [Tech Stack](#️-tech-stack)
-- [Project Structure](#-project-structure)
-- [Local Setup & Installation](#️-local-setup--installation)
-- [Docker Deployment](#️-docker-deployment-recommended)
-- [App & Web Interfaces](#-app--web-interfaces)
-- [Privacy & Ethics](#-privacy--ethics)
-- [Roadmap](#️-roadmap)
-- [Contributing](#-contributing)
-- [Acknowledgments](#-acknowledgments)
-- [License](#-license)
+## Performance (measured, honest)
+- Recognition window: **~3 s** (30 frames @ 10 FPS) per prediction — by design, not a bug
+- Validation accuracy: **__%** on a held-out 20% split (see Training)
+- CPU-only inference; no GPU required
 
----
+## Quickstart
+Prereqs: Python **3.10–3.12**, Node 18+.
 
-## 🚀 Overview
-
-SignBridge AI bridges the communication gap faced by the deaf and mute community. Traditional human interpreters are costly and rarely available on-demand. SignBridge AI turns any standard webcam or smartphone camera into an instant sign language interpreter using skeletal tracking and sequential deep learning — fully on-device, with zero raw video ever stored.
-
-| | |
-|---|---|
-| 🤖 **Computer Vision** | MediaPipe Holistic + OpenCV |
-| ⚡ **Low Latency** | Sub-100ms gesture recognition pipeline |
-| 🔒 **Privacy-First** | Zero video frames stored or transmitted |
-| 🌍 **Multilingual** | Hindi, English, and regional language voice output |
-
----
-
-## 🧠 How It Works (The Pipeline)
-
-```
-📷 Camera Feed → 🦴 Keypoint Tracking → 🧠 LSTM Model → 🗣️ Text-to-Speech
-```
-
-1. **Keypoint Tracking** (`ai_core/services/tracker.py`)
-   Uses OpenCV and MediaPipe Holistic to extract 3D skeletal joints (hands, face, pose) frame-by-frame — no raw pixels are retained.
-
-2. **Sequential AI Model** (`ai_core/services/model.py`)
-   A custom PyTorch LSTM ingests the sequence of keypoints over time, recognizing the fluid shape of a gesture rather than a single static pose.
-
-3. **Multilingual Voice Output** (`ai_core/services/voice.py`)
-   Translates the recognized gesture into text and synthesizes spoken audio in Hindi, English, or regional languages.
-
-> **Note:** Latency and accuracy figures depend on hardware (CPU vs GPU inference) and camera FPS. See [`docs/benchmarks.md`](docs/benchmarks.md) for methodology *(add this doc to back your performance claims)*.
-
----
-
-## ⚙️ Tech Stack
-
-**AI & Backend**
-- Language: Python 3.10+
-- Computer Vision: OpenCV, MediaPipe Holistic
-- Deep Learning: PyTorch (LSTM architecture)
-- API Layer: FastAPI + WebSockets (real-time streaming)
-- Voice: gTTS / pyttsx3
-
-**Web App**
-- Framework: React 18 + Vite
-- Streaming: Native WebSocket API
-- Styling: Tailwind CSS
-
-**Mobile App**
-- Framework: React Native + Expo
-- Camera: `react-native-vision-camera` (high-FPS frame processing)
-- Offline Inference: TensorFlow Lite
-
----
-
-## 📂 Project Structure
-
-```
-SignBridge-AI/
-├── ai_core/
-│   ├── app/                # FastAPI entrypoint
-│   └── services/
-│       ├── tracker.py      # MediaPipe keypoint extraction
-│       ├── model.py        # PyTorch LSTM inference
-│       └── voice.py        # TTS synthesis
-├── web_app/                # React + Vite frontend
-├── mobile_app/              # React Native + Expo app
-├── docker-compose.yml
-└── README.md
-```
-
----
-
-## 🛠️ Local Setup & Installation
-
-### Prerequisites
-- Python 3.10+
-- Node.js 18+
-- Webcam or smartphone camera
-
-### 1. AI Core Backend
-
-```bash
+Backend:
 cd ai_core
-python -m venv venv
-source venv/bin/activate      # On Windows: venv\Scripts\activate
-
+python -m venv venv && .\venv\Scripts\activate   # Windows
 pip install -r requirements.txt
+uvicorn app.main:app --reload
 
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-### 2. Web App
-
-```bash
+Frontend:
 cd web_app
 npm install
 npm run dev
-```
+Open http://localhost:5173 → Start a session → hold ASL letters steady (both hands in frame).
 
-Visit **http://localhost:5173** to access the web interface.
+## Training
+Dataset: [Kaggle ASL Alphabet](https://www.kaggle.com/datasets/grassknoted/asl-alphabet).
+kaggle datasets download -d grassknoted/asl-alphabet -p ai_core/dataset --unzip
+cd ai_core
+python -m training.extract_dataset --data dataset/asl_alphabet_train/asl_alphabet_train --out dataset/processed --per-class 200
+python -m training.train --data dataset/processed --epochs 40
+Weights save to ai_core/models/ (gitignored by design — retrain or request weights).
 
-### 3. Mobile App
+## Tests & CI
+pip install pytest
+cd ai_core && python -m pytest tests -q
+GitHub Actions runs the same suite on every push (.github/workflows/ci.yml).
 
-```bash
-cd mobile_app
-npm install
-npx expo start
-```
+## Docker (backend only)
+cd ai_core && docker build -t signbridge-backend . && docker run -p 8000:8000 signbridge-backend
 
-Scan the QR code with the **Expo Go** app on your phone.
+## Known limitations (being fixed next)
+- Tracker currently requires **both hands + pose** → one-handed signs/letters often drop
+- Static-image training sequences (jitter-augmented); dynamic gesture windows are roadmap
+- Single-signer data; no held-out multi-signer test set yet
 
----
+## Roadmap
+1. One-hand-tolerant tracker + wrist/shoulder-relative normalization
+2. Held-out test-set evaluation (Kaggle asl_alphabet_test) + confusion matrix
+3. Own-signer word vocabulary ("Hello", "Thank You"…) via webcam recording
+4. React Native mobile client; Docker-Compose full stack; in-browser (WASM) on-device inference
 
-## ☁️ Docker Deployment (Recommended)
-
-Spin up the entire stack (Backend API + Web Frontend) with a single command:
-
-```bash
-git clone https://github.com/amansingh112007-max/SignBridge-AI.git
-cd SignBridge-AI
-
-docker-compose up --build
-```
-
-| Service | URL |
-|---|---|
-| Web App | http://localhost:80 |
-| API Docs (Swagger) | http://localhost:8000/docs |
-
----
-
-## 📱 App & Web Interfaces
-
-**Web Interface**
-- ⚡ One-click webcam access
-- 💬 Real-time translated text overlay on video feed
-- ♿ Accessibility controls — high contrast mode, large text
-
-**Mobile Interface**
-- 📴 On-device processing via TensorFlow Lite for offline use
-- 🔔 Background translation while app is minimized
-
----
-
-## 🔒 Privacy & Ethics
-
-1. **Zero Raw Storage** — Raw video frames are never stored or transmitted.
-2. **Skeletal Abstraction** — The model only ever sees mathematical (x, y, z) joint coordinates; a face or identity cannot be reconstructed from this data.
-3. **On-Device Fallback** — The LSTM model can run entirely on-device via TFLite for absolute offline privacy.
-
----
-
-## 🗺️ Roadmap
-
-- [ ] Expand gesture vocabulary beyond current dataset
-- [ ] Add support for additional regional sign languages
-- [ ] Benchmark suite with published latency/accuracy numbers
-- [ ] Two-way translation (speech → sign avatar)
-
----
-
-## 🤝 Contributing
-
-We welcome contributions from developers, sign language experts, and accessibility advocates!
-
-1. Fork the repository
-2. Create your feature branch: `git checkout -b feature/AudioImprovements`
-3. Commit your changes: `git commit -m 'Added multilingual TTS caching'`
-4. Push to the branch: `git push origin feature/AudioImprovements`
-5. Open a Pull Request
-
----
-
-## 🙏 Acknowledgments
-
-- [MediaPipe](https://github.com/google/mediapipe) — Holistic pose/hand/face tracking
-- [PyTorch](https://pytorch.org/) — LSTM model training and inference
-- Sign language datasets and consultants who made this project possible 
-
----
-
-## 📜 License
-
-Distributed under the **MIT License**. See [`LICENSE`](LICENSE) for more information.
-
-<div align="center">
-
-*"Bridging human connection — turning silent signs into spoken words, instantly."*
-
-</div>
+## License
+MIT

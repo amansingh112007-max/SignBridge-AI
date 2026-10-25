@@ -1,5 +1,3 @@
-"""Trains the LSTM on extracted keypoint sequences and saves the best weights.
-v2: longer training + class-weighted loss + online jitter augmentation + LR scheduler."""
 import argparse
 import json
 import os
@@ -11,7 +9,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from app.services.model import LSTMModel   # MUST match production architecture
+from app.services.model import LSTMModel   
 
 
 def main():
@@ -29,7 +27,7 @@ def main():
         classes = json.load(f)
     print(f'Loaded {X.shape[0]} samples, {len(classes)} classes')
 
-    # ---- class weights: rare letters matter as much as common ones ----
+    
     counts = np.bincount(y, minlength=len(classes)).astype(np.float64)
     counts[counts == 0] = 1.0
     w = (1.0 / counts)
@@ -37,7 +35,7 @@ def main():
     class_w = torch.tensor(w, dtype=torch.float32)
     print('Class weights:', {classes[i]: round(float(w[i]), 2) for i in range(len(classes))})
 
-    # 80/20 train/validation split
+    
     idx = np.random.permutation(len(X))
     cut = int(0.8 * len(X))
     tr, va = idx[:cut], idx[cut:]
@@ -47,7 +45,7 @@ def main():
     va_loader = DataLoader(TensorDataset(torch.tensor(X[va]), torch.tensor(y[va])),
                            batch_size=args.batch)
 
-    # SAME architecture as production: input 258, hidden 64, 2 layers
+    
     model = LSTMModel(X.shape[2], 64, 2, len(classes))
     crit = nn.CrossEntropyLoss(weight=class_w)
     opt = torch.optim.Adam(model.parameters(), lr=1e-3)
@@ -58,12 +56,12 @@ def main():
     best = 0.0
 
     for epoch in range(args.epochs):
-        # ---- training pass (with online jitter augmentation) ----
+    
         model.train()
         loss_sum = correct = total = 0
         for xb, yb in tr_loader:
             if args.noise > 0:
-                xb = xb + torch.randn_like(xb) * args.noise   # fresh jitter every epoch
+                xb = xb + torch.randn_like(xb) * args.noise   
             opt.zero_grad()
             out = model(xb)
             loss = crit(out, yb)

@@ -1,8 +1,21 @@
+# --- Web backend ---
 fastapi
-uvicorn
+uvicorn[standard]
 websockets
 python-multipart
+
+# --- Voice (optional server-side speech for kiosk demos) ---
+pyttsx3
+
+# --- Vision & AI (pinned: these exact versions support Python 3.10-3.12) ---
 numpy<2.0
 opencv-python==4.10.0.84
 mediapipe==0.10.14
-pyttsx3
+
+# --- Deep learning (CPU wheels on Windows; see README for GPU index-url) ---
+torch
+torchvision
+torchaudio
+
+# --- Tests ---
+pytest
