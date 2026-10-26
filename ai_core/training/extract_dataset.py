@@ -1,7 +1,8 @@
 """
 Turns a Kaggle dataset (class folders of images or videos) into keypoint
 sequences our LSTM can learn from. Uses the SAME tracker as the live
-backend -> zero train/serve skew.
+backend -> zero train/serve skew. v2: writes used_files.json manifest
+so evaluate.py can build a clean held-out test set.
 """
 import argparse
 import json
@@ -21,7 +22,6 @@ SEQ_LEN = 30   # must match GestureModel.sequence_length
 
 
 def find_class_folders(root):
-    """Any folder that directly contains media files = one gesture class."""
     classes = {}
     for dirpath, _, filenames in os.walk(root):
         if any(f.lower().endswith(IMG_EXT + VID_EXT) for f in filenames):
@@ -36,14 +36,11 @@ def seq_from_image(tracker, path):
     kp, _ = tracker.process_frame(img)
     if kp is None:
         return None
-    # ASL letters are mostly STATIC poses, so we synthesize a 30-frame
-    # sequence with tiny jitter (standard MVP augmentation trick).
     jitter = np.random.normal(0, 0.003, (SEQ_LEN, kp.shape[0]))
     return kp[None, :] + jitter
 
 
 def seq_from_video(tracker, path):
-    """Sample 30 evenly-spaced frames from a real signing video."""
     cap = cv2.VideoCapture(path)
     total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     if total < SEQ_LEN:
@@ -69,8 +66,8 @@ def seq_from_video(tracker, path):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--data', required=True, help='folder with class subfolders')
-    ap.add_argument('--out', required=True, help='where to save .npy files')
+    ap.add_argument('--data', required=True)
+    ap.add_argument('--out', required=True)
     ap.add_argument('--per-class', type=int, default=100)
     args = ap.parse_args()
 
@@ -80,7 +77,7 @@ def main():
     classes = sorted(folders.keys())
     print(f'Found {len(classes)} classes: {classes}')
 
-    X, y = [], []
+    X, y, used = [], [], []
     for ci, name in enumerate(classes):
         files = os.listdir(folders[name])
         imgs = [f for f in files if f.lower().endswith(IMG_EXT)]
@@ -94,12 +91,14 @@ def main():
             s = seq_from_video(tracker, os.path.join(folders[name], v))
             if s is not None:
                 X.append(s); y.append(ci); taken += 1
+                used.append(os.path.normpath(os.path.join(folders[name], v)))
         for p in imgs:
             if taken >= args.per_class:
                 break
             s = seq_from_image(tracker, os.path.join(folders[name], p))
             if s is not None:
                 X.append(s); y.append(ci); taken += 1
+                used.append(os.path.normpath(os.path.join(folders[name], p)))
         print(f'  class {name:>6}: {taken} samples')
 
     X = np.array(X, dtype=np.float32)
@@ -109,7 +108,10 @@ def main():
     np.save(os.path.join(args.out, 'labels.npy'), y)
     with open(os.path.join(args.out, 'classes.json'), 'w') as f:
         json.dump(classes, f)
+    with open(os.path.join(args.out, 'used_files.json'), 'w') as f:
+        json.dump(used, f)
     print(f'✅ Dataset saved: {X.shape[0]} samples, shape {X.shape}')
+    print(f'📜 Manifest saved: {len(used)} files listed in used_files.json')
 
 
 if __name__ == '__main__':
