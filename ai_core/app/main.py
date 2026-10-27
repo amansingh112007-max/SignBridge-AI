@@ -41,7 +41,7 @@ TRANSLATIONS = {
 }
 
 # FR-7: low-confidence recognition never guesses silently
-CONFIDENCE_FLOOR = 60
+CONFIDENCE_FLOOR = 35
 
 tracker = KeypointTracker()
 model = GestureModel()                      # shared weights, stateless per connection
@@ -88,8 +88,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 gesture, confidence, session["buffer"] = model.step(session["buffer"], keypoints)
 
                 # FR-7 + temporal smoothing: caption/speak only on repeated, confident signs
-                if (gesture != "None" and confidence >= CONFIDENCE_FLOOR
-                        and gesture == session["last"]):
+                if (gesture != "None" and confidence >= CONFIDENCE_FLOOR):
                     entry = TRANSLATIONS.get(gesture, {"en": gesture, "hi": gesture})
                     spoken = entry.get(session["lang"], gesture)
                     if tts:
