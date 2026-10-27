@@ -121,4 +121,4 @@ export default function VideoFeed({ videoRef, canvasRef, running, tracking, curr
       </div>
     </div>
   );
-}
+} 

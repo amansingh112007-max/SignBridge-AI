@@ -24,4 +24,4 @@ def test_step_window_and_reset():
 
     assert label in gm.gesture_classes
     assert 0.0 <= conf <= 100.0
-    assert buffer == []
+    assert buffer == [] 

@@ -60,7 +60,7 @@ class KeypointTracker:
             "rightHand": [[round(r.x, 3), round(r.y, 3)] for r in results.right_hand_landmarks.landmark]
                          if results.right_hand_landmarks else [],
         }
-        return keypoints, display
+        return keypoints, display 
 
     def get_keypoints(self, image):
         keypoints, _ = self.process_frame(image)

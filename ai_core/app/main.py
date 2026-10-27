@@ -113,4 +113,4 @@ async def websocket_endpoint(websocket: WebSocket):
                 })
 
     except WebSocketDisconnect:
-        print("❌ Client disconnected")
+        print("❌ Client disconnected  from WebSocket")

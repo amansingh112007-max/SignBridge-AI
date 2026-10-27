@@ -63,7 +63,7 @@ def main():
     for ci, name in enumerate(classes):
         pool = files_per_class[name]
         random.shuffle(pool)
-        imgs = pool[:args.per_class]
+        imgs = pool[:args.per_class] 
         taken = 0
         for path in imgs:
             img = cv2.imread(path)

@@ -23,7 +23,7 @@ class LSTMModel(nn.Module):
         return self.fc(out[:, -1, :])
 
 
-class GestureModel:
+class GestureModel: 
     """Stateless per connection: sequence buffers live in the caller (session)."""
 
     def __init__(self):
